@@ -177,8 +177,12 @@ class GameEngine:
         pygame.draw.circle(screen, GOAL_COLOR, (self.goal_x, self.goal_y), self.goal_radius)
         pygame.draw.circle(screen, WHITE, (int(self.marble.x), int(self.marble.y)), self.marble.radius)
 
-        elapsed = pygame.time.get_ticks() - self.start_ticks
-        seconds_left = max(0, (self.time_limit_ms - elapsed) // 1000)
+        if self.game_over:
+            # freeze the clock once the round has ended
+            elapsed = self.finish_time_ms if self.result == "solved" else self.time_limit_ms
+        else:
+            elapsed = pygame.time.get_ticks() - self.start_ticks
+        seconds_left = max(0, -(-(self.time_limit_ms - elapsed) // 1000))  # round up
         timer_text = self.font.render(f"Time: {seconds_left}s  [{self.difficulty}]", True, WHITE)
         screen.blit(timer_text, (10, 10))
 
