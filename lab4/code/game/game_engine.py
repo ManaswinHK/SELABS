@@ -26,6 +26,7 @@ class GameEngine:
         self.start_ticks = pygame.time.get_ticks()
 
         self.font = pygame.font.SysFont("Arial", 26)
+        self.big_font = pygame.font.SysFont("Arial", 54, bold=True)
         self.game_over = False
         self.result = None  # "solved" or "timeout"
         self.finish_time_ms = None
@@ -48,9 +49,13 @@ class GameEngine:
         return walls
 
     def handle_event(self, event):
-        # This game is driven entirely by the continuous mouse
-        # position, handled in handle_input each frame.
-        pass
+        # Movement is driven by the mouse position (see handle_input);
+        # events are only used for the end screen.
+        if not self.game_over:
+            return
+        if event.type == pygame.KEYDOWN:
+            if event.key in (pygame.K_ESCAPE, pygame.K_q):
+                pygame.event.post(pygame.event.Event(pygame.QUIT))
 
     def handle_input(self):
         if self.game_over:
@@ -157,10 +162,23 @@ class GameEngine:
         timer_text = self.font.render(f"Time: {seconds_left}s", True, WHITE)
         screen.blit(timer_text, (10, 10))
 
-        if self.game_over and not getattr(self, "_game_over_logged", False):
-            # NOTE: no proper end screen yet - see Task 2 in the README.
-            if self.result == "solved":
-                print(f"Solved! Finished in {self.finish_time_ms / 1000:.1f}s")
-            else:
-                print("Time's up! Maze not solved.")
-            self._game_over_logged = True
+        if self.game_over:
+            self._render_end_screen(screen)
+
+    def _render_end_screen(self, screen):
+        overlay = pygame.Surface((self.width, self.height), pygame.SRCALPHA)
+        overlay.fill((0, 0, 0, 170))
+        screen.blit(overlay, (0, 0))
+
+        if self.result == "solved":
+            title, color = "Maze Solved!", GOAL_COLOR
+            detail = f"Finish time: {self.finish_time_ms / 1000:.2f}s"
+        else:
+            title, color = "Time's Up!", (220, 80, 80)
+            detail = "The maze was not solved in time."
+
+        lines = [(self.big_font, title, color, -80), (self.font, detail, WHITE, -20),
+                 (self.font, "Press Q or ESC to exit", WHITE, 40)]
+        for font, text, col, offset in lines:
+            surf = font.render(text, True, col)
+            screen.blit(surf, surf.get_rect(center=(self.width // 2, self.height // 2 + offset)))
