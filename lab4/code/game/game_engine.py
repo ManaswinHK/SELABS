@@ -9,24 +9,33 @@ DARK = (40, 40, 50)
 WALL_COLOR = (90, 90, 110)
 GOAL_COLOR = (60, 200, 120)
 
+# difficulty -> (tilt strength, friction, time limit in ms)
+DIFFICULTIES = {
+    "Easy":   (0.5, 0.04, 60000),
+    "Medium": (0.6, 0.02, 45000),
+    "Hard":   (0.8, 0.01, 30000),
+}
+DIFFICULTY_KEYS = {pygame.K_1: "Easy", pygame.K_2: "Medium", pygame.K_3: "Hard"}
+
 class GameEngine:
     def __init__(self, width, height):
         self.width = width
         self.height = height
 
-        self.marble = Marble(50, 50)
-        self.tilt_strength = 0.6
-        self.friction = 0.02
         self.max_speed = 9
-
         self.walls = self._build_maze()
         self.goal_x, self.goal_y, self.goal_radius = width - 60, height - 60, 22
 
-        self.time_limit_ms = 45000
-        self.start_ticks = pygame.time.get_ticks()
-
         self.font = pygame.font.SysFont("Arial", 26)
         self.big_font = pygame.font.SysFont("Arial", 54, bold=True)
+        self.difficulty = "Medium"
+        self.start_round(self.difficulty)
+
+    def start_round(self, difficulty):
+        self.difficulty = difficulty
+        self.tilt_strength, self.friction, self.time_limit_ms = DIFFICULTIES[difficulty]
+        self.marble = Marble(50, 50)
+        self.start_ticks = pygame.time.get_ticks()
         self.game_over = False
         self.result = None  # "solved" or "timeout"
         self.finish_time_ms = None
@@ -54,7 +63,9 @@ class GameEngine:
         if not self.game_over:
             return
         if event.type == pygame.KEYDOWN:
-            if event.key in (pygame.K_ESCAPE, pygame.K_q):
+            if event.key in DIFFICULTY_KEYS:
+                self.start_round(DIFFICULTY_KEYS[event.key])
+            elif event.key in (pygame.K_ESCAPE, pygame.K_q):
                 pygame.event.post(pygame.event.Event(pygame.QUIT))
 
     def handle_input(self):
@@ -159,7 +170,7 @@ class GameEngine:
 
         elapsed = pygame.time.get_ticks() - self.start_ticks
         seconds_left = max(0, (self.time_limit_ms - elapsed) // 1000)
-        timer_text = self.font.render(f"Time: {seconds_left}s", True, WHITE)
+        timer_text = self.font.render(f"Time: {seconds_left}s  [{self.difficulty}]", True, WHITE)
         screen.blit(timer_text, (10, 10))
 
         if self.game_over:
@@ -177,8 +188,10 @@ class GameEngine:
             title, color = "Time's Up!", (220, 80, 80)
             detail = "The maze was not solved in time."
 
-        lines = [(self.big_font, title, color, -80), (self.font, detail, WHITE, -20),
-                 (self.font, "Press Q or ESC to exit", WHITE, 40)]
+        lines = [(self.big_font, title, color, -100), (self.font, detail, WHITE, -50),
+                 (self.font, "Play again:", WHITE, 10),
+                 (self.font, "1 - Easy    2 - Medium    3 - Hard", WHITE, 50),
+                 (self.font, "Q / ESC - Exit", WHITE, 100)]
         for font, text, col, offset in lines:
             surf = font.render(text, True, col)
             screen.blit(surf, surf.get_rect(center=(self.width // 2, self.height // 2 + offset)))
