@@ -1,6 +1,7 @@
 import pygame
 from .marble import Marble
 from .wall import Wall
+from .sounds import SoundManager
 
 # Game Engine
 
@@ -28,6 +29,7 @@ class GameEngine:
 
         self.font = pygame.font.SysFont("Arial", 26)
         self.big_font = pygame.font.SysFont("Arial", 54, bold=True)
+        self.sounds = SoundManager()
         self.difficulty = "Medium"
         self.start_round(self.difficulty)
 
@@ -89,6 +91,7 @@ class GameEngine:
         if elapsed >= self.time_limit_ms:
             self.game_over = True
             self.result = "timeout"
+            self.sounds.play("timeout")
             return
 
         self.marble.vx *= (1 - self.friction)
@@ -103,7 +106,8 @@ class GameEngine:
         self.marble.x += self.marble.vx
         self.marble.y += self.marble.vy
 
-        self._resolve_wall_collisions()
+        if self._resolve_wall_collisions():
+            self.sounds.play("bounce")
 
         gx = self.goal_x - self.marble.x
         gy = self.goal_y - self.marble.y
@@ -111,9 +115,11 @@ class GameEngine:
             self.game_over = True
             self.result = "solved"
             self.finish_time_ms = elapsed
+            self.sounds.play("win")
 
     def _resolve_wall_collisions(self):
         m = self.marble
+        bounced = False
         for wall in self.walls:
             rect = wall.rect()
 
@@ -155,9 +161,12 @@ class GameEngine:
 
             # Bounce only if moving into the wall
             vn = m.vx * nx + m.vy * ny
+            if vn < -1.0:  # ignore tiny contacts so sliding along walls stays quiet
+                bounced = True
             if vn < 0:
                 m.vx -= (1 + 0.3) * vn * nx
                 m.vy -= (1 + 0.3) * vn * ny
+        return bounced
 
     def render(self, screen):
         screen.fill(DARK)
